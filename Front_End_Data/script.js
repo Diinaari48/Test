@@ -1,8 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     // ----------------------------
-    // 0. CONFIG
+    // 0. CONFIG (Halkan ayaa laga saxay)
     // ----------------------------
-    const API_BASE_URL = 'http://127.0.0.1:3402';
+    const API_BASE_URL = 'https://test-6jux.onrender.com'; 
 
     // Buttons
     const predictBtn = document.getElementById("predictBtn");
@@ -14,18 +14,19 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch(`${API_BASE_URL}/`)
         .then(res => res.json())
         .then(data => {
-            if (data.status === "OK") {
+            // Flask-gaagu wuxuu soo celinayaa "Online"
+            if (data.status === "Online") {
                 console.log("✅ Flask server online");
                 if (predictBtn) predictBtn.disabled = false;
                 if (submitBtn) submitBtn.disabled = false;
             }
         })
         .catch(err => {
-            console.warn("⚠️ Server-ka Fake News Detection ma shaqeynayo.");
+            console.warn("⚠️ Server-ka Render weli ma uusan kicin ama URL-ka ayaa qaldan.");
         });
 
     // ----------------------------
-    // 1. SPA Navigation
+    // 1. SPA Navigation (Koodhkaagii oo dhammaystiran)
     // ----------------------------
     const allInternalLinks = document.querySelectorAll('a[href^="#"]');
     const mainNavLinks = document.querySelectorAll('.nav-links a');
@@ -63,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showSection(hash && document.getElementById(hash) ? hash : 'home');
 
     // ----------------------------
-    // 2. Hero Slider Logic (Automatic Only)
+    // 2. Hero Slider Logic
     // ----------------------------
     const slides = document.querySelectorAll('.slide');
     let currentSlide = 0;
@@ -76,18 +77,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function nextSlide() {
-        currentSlide = (currentSlide + 1) % slides.length;
-        showSlide(currentSlide);
+        if (slides.length > 0) {
+            currentSlide = (currentSlide + 1) % slides.length;
+            showSlide(currentSlide);
+        }
     }
 
     if (slides.length > 0) {
-        slides.forEach(s => s.style.animation = 'none');
         showSlide(0);
         setInterval(nextSlide, 5000);
     }
 
     // ----------------------------
-    // 2.5 VALIDATION HELPERS & UI
+    // 2.5 VALIDATION HELPERS
     // ----------------------------
     const errorDiv = document.getElementById("errorMessage");
     const newsText = document.getElementById("newsText");
@@ -96,64 +98,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showError(msg, inputId) {
         if (errorDiv) {
-            // Clear any existing timeout
             if (errorTimeout) clearTimeout(errorTimeout);
-
             errorDiv.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${msg}`;
-
-            // Clear the offending input
             const input = document.getElementById(inputId);
             if (input) input.value = "";
-
-            // Auto-hide error after 4 seconds
-            errorTimeout = setTimeout(() => {
-                errorDiv.innerHTML = "";
-            }, 4000);
+            errorTimeout = setTimeout(() => { errorDiv.innerHTML = ""; }, 4000);
         }
     }
 
-    function clearError() {
-        if (errorDiv) errorDiv.innerText = "";
-    }
+    function clearError() { if (errorDiv) errorDiv.innerText = ""; }
 
-    // Clear error when user starts typing
     [newsText, newsURL].forEach(input => {
         if (input) input.addEventListener('input', clearError);
     });
 
     function isURL(text) {
         const urlPattern = /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([/\w .-]*)*\/?$/i;
-        const simpleDomainPattern = /[a-z0-9.-]+\.(com|net|org|io|gov|edu|info|so|me)/i;
-        return urlPattern.test(text.trim()) || simpleDomainPattern.test(text.trim());
+        return urlPattern.test(text.trim());
     }
 
     function containsLink(text) {
-        const linkPattern = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-z0-9.-]+\.(com|net|org|io|info|gov|edu|so|me))/i;
+        const linkPattern = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-z0-9.-]+\.(com|net|org|io|so|me))/i;
         return linkPattern.test(text);
     }
 
-    function isGibberish(text) {
-        if (text.length < 10) return false; // Too short to judge fairly
-        const words = text.split(/\s+/);
-
-        // 1. Check for extreme word length (no spaces for a long time)
-        for (let word of words) {
-            if (word.length > 35) return true;
-        }
-
-        // 2. Check vowel-to-consonant ratio (heuristic)
-        const totalChars = text.replace(/\s/g, "").length;
-        const vowels = text.match(/[aeiou]/gi) || [];
-        if (totalChars > 20 && (vowels.length / totalChars) < 0.12) return true;
-
-        // 3. Check for repetitive character patterns (e.g., "aaaaa" or "asdfasdf")
-        if (/(.)\1{4,}/i.test(text)) return true;
-
-        return false;
-    }
-
     // ----------------------------
-    // 3. Fake News Prediction
+    // 3. Fake News Prediction (SAXIDII URL-ka & KEY-GA)
     // ----------------------------
     const resultDiv = document.getElementById("result");
     const confidenceDiv = document.getElementById("confidence");
@@ -170,39 +140,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (predictBtn) predictBtn.addEventListener('click', () => {
         const selected = document.querySelector('input[name="inputType"]:checked');
         const inputType = selected.value;
-        let data = "";
+        let userInputData = "";
+
         if (inputType === "text") {
-            data = newsText.value.trim();
-            if (data.length < 20) { showError("Fadlan geli qoraal kugu filan (ugu yaraan 20 xaraf).", "newsText"); return; }
-
-            // Validation 1: No Links in Text Mode
-            if (containsLink(data)) {
-                showError("NIDAMKA: Text mode-ka laguma ogola Links. Fadlan u bedel 'URL' mode.", "newsText");
-                return;
-            }
-
-            // Validation 3: Reject Gibberish
-            if (isGibberish(data)) {
-                showError("KHALAD: Qoraalkan ma ahan mid la aqrin karo.", "newsText");
-                return;
-            }
+            userInputData = newsText.value.trim();
+            if (userInputData.length < 20) { showError("Fadlan geli ugu yaraan 20 xaraf.", "newsText"); return; }
+            if (containsLink(userInputData)) { showError("Text mode-ka laguma ogola Links.", "newsText"); return; }
         } else {
-            data = newsURL.value.trim();
-            if (!data) { showError("Fadlan geli URL.", "newsURL"); return; }
-
-            // Validation 2: Only URLs in URL Mode
-            if (!isURL(data)) {
-                showError("KHALAD: Fadlan geli URL sax ah.", "newsURL");
-                return;
-            }
+            userInputData = newsURL.value.trim();
+            if (!userInputData || !isURL(userInputData)) { showError("Fadlan geli URL sax ah.", "newsURL"); return; }
         }
 
         resultDiv.innerText = "⏳ Analyzing...";
+        
+        // CUSBOONAYSIIN: U dir 'text' halkii ay ka ahaan lahayd 'data'
         fetch(`${API_BASE_URL}/predict`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: inputType, data: data })
-        }).then(res => res.json()).then(res => {
+            body: JSON.stringify({ text: userInputData }) 
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Server Error");
+            return res.json();
+        })
+        .then(res => {
             if (res.error) { resultDiv.innerText = "❌ " + res.error; }
             else {
                 const isReal = res.prediction.includes("REAL");
@@ -210,13 +171,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 resultDiv.style.color = isReal ? "#2ecc71" : "#e74c3c";
                 confidenceDiv.innerText = "Kalsoonida: " + res.confidence;
             }
-        }).catch(() => { resultDiv.innerText = "❌ Connection Error"; });
+        })
+        .catch(() => { 
+            resultDiv.innerText = "❌ Connection Error: Iska hubi Render-kaaga."; 
+        });
     });
 
     const refreshBtn = document.getElementById("refreshBtn");
     if (refreshBtn) refreshBtn.addEventListener('click', () => {
-        document.getElementById("newsText").value = "";
-        document.getElementById("newsURL").value = "";
+        newsText.value = "";
+        newsURL.value = "";
         resultDiv.innerText = "";
         confidenceDiv.innerText = "";
     });
@@ -230,37 +194,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const email = document.getElementById("contactEmail").value.trim();
             const message = document.getElementById("contactMessage").value.trim();
 
-            if (!name || !email || !message) {
-                alert("Fadlan buuxi dhamaan meelaha banaan.");
-                return;
-            }
+            if (!name || !email || !message) { alert("Fadlan buuxi dhamaan meelaha banaan."); return; }
 
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            submitBtn.innerHTML = 'Sending...';
 
             fetch(`${API_BASE_URL}/contact`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, message })
             })
-                .then(res => res.json())
-                .then(res => {
-                    if (res.status === "Success") {
-                        alert(res.message);
-                        document.getElementById("contactName").value = "";
-                        document.getElementById("contactEmail").value = "";
-                        document.getElementById("contactMessage").value = "";
-                    } else {
-                        alert("Khalad: " + (res.error || "Lama soo diri karo fariinta."));
-                    }
-                })
-                .catch(() => {
-                    alert("Khalad: Connection Error.");
-                })
-                .finally(() => {
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Message';
-                });
+            .then(res => res.json())
+            .then(res => {
+                alert("Fariintaada waa la diray!");
+                document.getElementById("contactName").value = "";
+                document.getElementById("contactEmail").value = "";
+                document.getElementById("contactMessage").value = "";
+            })
+            .catch(() => { alert("Cilad dhinaca server-ka ah."); })
+            .finally(() => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Send Message';
+            });
         });
     }
 });
