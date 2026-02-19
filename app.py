@@ -1,4 +1,4 @@
-import os
+import os  # Halkan waa lagu saxay (i-du waa yar tahay)
 import re
 import joblib
 import traceback
@@ -52,7 +52,6 @@ def is_vague_source(text):
 # ================= LOAD MODELS =================
 try:
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-    # Jidka (Path-ka) waa inuu ahaadaa folder-ka 'saved_model' ee bannaanka yaalla
     MODEL_PATH = os.path.join(BASE_DIR, "saved_model", "svm_high_confidence.pkl")
     VECTORIZER_PATH = os.path.join(BASE_DIR, "saved_model", "fake_real_TF_IDF_vectorizer.pkl")
     ENCODER_PATH = os.path.join(BASE_DIR, "saved_model", "fake_real_label_encoder.pkl")
@@ -67,34 +66,28 @@ except Exception as e:
 # ================= ROUTES =================
 @app.route("/")
 def home():
-    return jsonify({"status": "Online"})
+    return jsonify({"status": "Online", "message": "API is running successfully!"})
 
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json(silent=True)
+        if not data or "text" not in data:
+            return jsonify({"error": "No text provided"}), 400
+            
         content = data.get("text", "")
-        
-        # 1. Preprocess
         clean_text = preprocess_text(content)
-        
-        # 2. Vectorize (TF-IDF)
         X_tfidf = tfidf.transform([clean_text])
         
-        # 3. Create Additional Features (Extreme & Vague)
         ext = is_extreme_claim(clean_text)
         vag = is_vague_source(clean_text)
         
-        # 4. HSTACK (Sidii aad ku samaysay tababarka)
-        # Waxaan isku daraynaa TF-IDF iyo labada feature ee kale
         extra_features = np.array([[ext, vag]])
         X_final = hstack([X_tfidf, extra_features])
         
-        # 5. Predict
         prediction = model.predict(X_final)[0]
         label = "REAL NEWS" if prediction == 1 else "FAKE NEWS"
         
-        # Confidence logic
         if hasattr(model, "decision_function"):
             score = model.decision_function(X_final)[0]
             confidence = round((1 / (1 + np.exp(-abs(score)))) * 100, 2)
@@ -109,8 +102,9 @@ def predict():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+# ================= RUN SERVER =================
 if __name__ == "__main__":
-    # Ka dhig 10000 si Render u arko
+    # Render wuxuu u baahan yahay Port 10000
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
-
