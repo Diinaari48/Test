@@ -105,6 +105,7 @@ def predict():
 
 # ================= RUN SERVER =================
 if __name__ == "__main__":
-    # Render wuxuu u baahan yahay Port 10000
+    # Ha isticmaalin port go'an, u oggolow Render inuu keeno PORT-ka
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
